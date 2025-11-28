@@ -2,106 +2,133 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    /**
-     * User Registration
-     */
-    public function register(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'name'     => 'required|string|max:100',
-            'email'    => 'required|email|max:100|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+    //
+    public function register(Request $request){
+        //valid
+        // dd($request);
+        $errors = Validator::make($request->all(),[
+            "name" => 'required|string|max:100',
+            "email" => 'required|email|max:255',
+            "password" => 'required|string|min:6|confirmed',
+
         ]);
 
-        if ($validator->fails()) {
+        if($errors->fails()){
             return response()->json([
-                'errors' => $validator->errors(),
-            ], 422);
+                'error' => $errors->errors() // errors   -> class validator
+            ],301);
         }
 
-        $accessToken = Str::random(64);
+        //hash password
 
-        $user = User::create([
-            'name'         => $request->name,
-            'email'        => $request->email,
-            'password'     => bcrypt($request->password),
-            'access_token' => $accessToken,
+        $hash_password = bcrypt($request->password);
+
+        //create token
+        $access_token = Str::random(64);
+
+        // create user
+        User::create([
+            "name" => $request->name,
+            "email" => $request->email,
+            "password" => $hash_password,
+            "access_token" => $access_token,
+
         ]);
 
+        // redirect
         return response()->json([
-            'msg'          => 'User registered successfully',
-            'access_token' => $accessToken,
-        ], 201);
+            'msg' => "User register Successfuly",
+            "access_token" => $access_token,
+        ],200);
     }
 
-    /**
-     * User Login
-     */
-    public function login(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email'    => 'required|email|max:100',
-            'password' => 'required|string|min:6',
+
+    public function login(Request $request){
+        //valid
+        // dd($request);
+        $errors = Validator::make($request->all(),[
+            "email" => 'required|email|max:255',
+            "password" => 'required|string|min:6',
+
         ]);
 
-        if ($validator->fails()) {
+        if($errors->fails()){
             return response()->json([
-                'errors' => $validator->errors(),
-            ], 422);
+                'error' => $errors->errors() // errors   -> class validator
+            ],301);
         }
 
-        $user = User::where('email', $request->email)->first();
+        // check email
+        $user = User::where('email',$request->email)->first();
+        if($user){
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+             //hash password
+
+            $valid =Hash::check($request->password, $user->password);
+            if($valid){
+            //update token
+            $access_token = Str::random(64);
+                $user->update([
+                    "access_token" => $access_token ,
+                ]);
+            }else{
+                return response()->json([
+                'msg' => "error cradinonal email or password",
+            ],301);
+            }
+
+        }else{
             return response()->json([
-                'msg' => 'Invalid email or password',
-            ], 401);
+            'msg' => "error cradinonal email or password",
+        ],301);
         }
 
-        $accessToken = Str::random(64);
-        $user->update(['access_token' => $accessToken]);
 
+
+        // login , message
         return response()->json([
-            'msg'          => 'Welcome ' . $user->name . ', login successful',
-            'access_token' => $accessToken,
-        ], 200);
+            'msg' => "User login Successfuly",
+            "access_token" => $access_token,
+        ],200);
     }
 
-    /**
-     * User Logout
-     */
-    public function logout(Request $request)
-    {
-        // Expecting header: Authorization: Bearer <token>
-        $accessToken = $request->bearerToken();
 
-        if (!$accessToken) {
-            return response()->json([
-                'msg' => 'Access token not provided',
-            ], 401);
+    public function logout(Request $request){
+        // login -> have access_token -> header
+        $access_token = $request->header('access_token');
+        //
+        if($access_token !== null ){
+            $user = User::where('access_token',$access_token)->first();
+            if($user){
+                // empty access token
+                $user->update([
+                    "access_token" => '',
+                ]);
+            }else{
+                return response()->json([
+                'msg' => "user not found",
+
+                ],404);
+            }
+        }else{
+                return response()->json([
+                'msg' => "access token not correct or not send",
+
+                ],301);
         }
 
-        $user = User::where('access_token', $accessToken)->first();
-
-        if (!$user) {
-            return response()->json([
-                'msg' => 'Invalid access token',
-            ], 401);
-        }
-
-        $user->update(['access_token' => null]);
-
+                // logout , message
         return response()->json([
-            'msg' => 'Logged out successfully',
-        ], 200);
+            'msg' => "User logout Successfuly",
+        ],200);
     }
 }

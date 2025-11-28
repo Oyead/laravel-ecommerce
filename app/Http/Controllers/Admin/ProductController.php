@@ -55,40 +55,7 @@ public function store(Request $request){
         $product = Product::findOrFail($id);
         Storage::delete($product->image);
         $product->delete();
-    return redirect()->route('products.index')->with('success','تم مسح المنتج بنجاح ');
+    return redirect()->route('products.index')->with('success','تم سمح المنتج بنجاح ');
 
     }
-    // Edit
-public function edit($id)
-{
-    $product = Product::findOrFail($id);
-    return view('admin.products.edit', compact('product'));
-}
-
-// Update
-public function update(Request $request, $id)
-{
-    $product = Product::findOrFail($id);
-
-    $data = $request->validate([
-        "name" => 'required|string|max:255',
-        "desc" => 'required',
-        "price" => 'required|numeric',
-        "quantity" => 'required|numeric',
-        "image" => 'nullable|image|mimes:png,jpg,jpeg',
-    ]);
-
-    // if new image uploaded
-    if ($request->hasFile('image')) {
-        Storage::delete($product->image);
-        $data['image'] = Storage::putFile("products", $request->image);
-    } else {
-        $data['image'] = $product->image; // keep old image
-    }
-
-    $product->update($data);
-
-    return redirect()->route('products.index')->with('success', 'تم تعديل المنتج بنجاح');
-}
-
 }

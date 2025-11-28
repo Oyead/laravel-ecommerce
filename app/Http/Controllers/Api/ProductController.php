@@ -7,87 +7,141 @@ use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator; // Using Validator facade for consistency
+use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
-    public function index()
-    {
+    //
+    public function index(){
         $products = Product::all();
+        if($products){
+        // resource  // collection
         return ProductResource::collection($products);
-    }
-
-    public function show($id)
-    {
-        $product = Product::find($id);
-        if ($product) {
-            return new ProductResource($product);
+        }else{
+            return response()->json([
+                'msg' => "No Data Founded"
+            ],404);
         }
-        return response()->json(["message" => "Product not found"], 404);
+
+
     }
 
-    public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
+    public function show($id){
+        $product = Product::find($id);
+        if($product){
+        // resource  // collection
+        return new ProductResource($product);
+        }else{
+            return response()->json([
+                'msg' => "No Data Founded"
+            ],404);
+        }
+
+    }
+
+    public function store(Request $request){
+        //valid
+        $errors = Validator::make($request->all(),[
             "name" => 'required|string|max:255',
-            "desc" => 'required|string',
-            "price" => 'required|numeric|min:0',
-            "quantity" => 'required|integer|min:0',
+            "desc" => 'required',
+            "price" => 'required|numeric',
+            "quantity" => 'required|numeric',
             "image" => 'required|image|mimes:png,jpg,jpeg',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        if($errors->fails()){
+            return response()->json([
+                'error' => $errors->errors() // errors   -> class validator
+            ],301);
         }
 
-        $data = $validator->validated();
-        $data['image'] = Storage::putFile("products", $request->image);
-        $product = Product::create($data);
+        //image
+        $image = Storage::putFile("products",$request->image);
 
-        return response()->json([
-            "message" => "Product created successfully.",
-            "product" => new ProductResource($product)
-        ], 201);
+
+        // create
+        // $product = Product::create($data);
+        $product = Product::create([
+            "name" => $request->name,
+            "desc" => $request->desc,
+            "price" => $request->price,
+            "quantity" => $request->quantity,
+            "image" => $image,
+
+        ]);
+        //redirect
+            return response()->json([
+                'msg' => "Product Created Successfuly"
+            ],200);
     }
 
-    public function update(Request $request, $id)
-    {
-        // NEW: Moved findOrFail to the top to fail early if not found
-        $product = Product::findOrFail($id);
+    public function update(Request $request , $id){
+        // select one
+        // dd($request);
+        $product = Product::find($id);
+        if($product == null){
+          return response()->json([
+                'msg' => "No Data Founded"
+            ],404);
+        }
+        //valid
 
-        $validator = Validator::make($request->all(), [
-            "name" => 'sometimes|required|string|max:255',
-            "desc" => 'sometimes|required|string',
-            "price" => 'sometimes|required|numeric|min:0',
-            "quantity" => 'sometimes|required|integer|min:0',
-            "image" => 'nullable|image|mimes:png,jpg,jpeg',
+        $errors = Validator::make($request->all(),[
+            "name" => 'required|string|max:255',
+            "desc" => 'required',
+            "price" => 'required|numeric',
+            "quantity" => 'required|numeric',
+            "image" => 'image|mimes:png,jpg,jpeg',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        if($errors->fails()){
+            return response()->json([
+                'error' => $errors->errors() // errors   -> class validator
+            ],301);
         }
 
-        $data = $validator->validated();
 
-        if ($request->hasFile('image')) {
+        //image
+        //remove
+        if($request->hasFile("image")){
             Storage::delete($product->image);
-            $data['image'] = Storage::putFile("products", $request->image);
+            $image = Storage::putFile("products",$request->image);
+        }else{
+            $image = $product->image;
         }
 
-        $product->update($data);
+        // update
+        // $product = Product::create($data);
+        $product->update([
+            "name" => $request->name,
+            "desc" => $request->desc,
+            "price" => $request->price,
+            "quantity" => $request->quantity,
+            "image" => $image,
 
-        return response()->json([
-            "message" => "Product updated successfully.",
-            "product" => new ProductResource($product)
-        ], 200);
+        ]);
+
+        //redirect
+            return response()->json([
+                'msg' => "Product updated Successfuly",
+                "product" => new ProductResource($product),
+            ],200);
     }
 
-    public function destroy($id)
-    {
-        $product = Product::findOrFail($id);
-        Storage::delete($product->image);
+        public function destroy(Request $request , $id){
+        $product = Product::find($id);
+        if($product == null){
+          return response()->json([
+                'msg' => "No Data Founded"
+            ],404);
+        }
+        if($product->image != null){
+         Storage::delete($product->image);
+        }
         $product->delete();
 
-        return response()->json(["message" => "Product deleted successfully."], 200);
+        return response()->json([
+            'msg' => "Product deleted Successfuly",
+        ],200);
     }
 }

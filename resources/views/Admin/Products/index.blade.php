@@ -16,7 +16,7 @@
         <th scope="col">price</th>
         <th scope="col">Quantity</th>
         <th scope="col">Desc</th>
-        <th scope="col">Action</th>
+        <th scope="col">Aciton</th>
       </tr>
     </thead>
     <tbody>
@@ -35,7 +35,7 @@
                 <button type="submit" class="btn btn-danger">delete</button>
             </form>
             <h1>
-<a class="btn btn-success" href="{{ url("editProduct/$product->id") }}">edit</a>
+                <a class="btn btn-success" href="{{url("editProduct/$product->id")}}" >edit</a>
             </h1>
         </td>
     </tr>
